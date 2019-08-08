@@ -6,16 +6,15 @@ const path = require('path');
 const bodyParser = require('body-parser')
 const dotenv = require('dotenv');
 dotenv.config();
-
+const login = async () => {
+    await click("Login");
+    await write(process.env.DD_EMAIL, textBox({ id: 'login' }));
+    await write(process.env.DD_PASSWORD, textBox({ id: 'password' }));
+    await click("Login");
+    consola.success('Login Succesful');
+}
 const prepareBrowser = async () => {
     try {
-        const login = async () => {
-            await click("Login");
-            await write(process.env.DD_EMAIL, textBox({ id: 'login' }));
-            await write(process.env.DD_PASSWORD, textBox({ id: 'password' }));
-            await click("Login");
-            consola.success('Login Succesful');
-        }
         await openBrowser({ headless: true });
         consola.success('Browser Opened');
         await goto("https://www.desidime.com", {
@@ -26,6 +25,7 @@ const prepareBrowser = async () => {
         await goto('https://www.desidime.com/deals/new', {
             'waitForEvents': ['DOMContentLoaded']
         });
+        consola.success('New Deal Page Opened!');
     }
     catch (error) {
         console.error(error);
@@ -41,7 +41,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname + '/index.html'));
 });
 app.post('/submitPost', function (req, res) {
-    res.send('Got a POST request' + req.body.dealData);
+    res.send('Got a POST request');
     postDeal(req.body.dealData);
 })
 
@@ -51,7 +51,7 @@ const postDeal = async (dealData) => {
     try {
         consola.success('Got Deal Data!');
         const { dealTitle, dealURL } = await processDealData(dealData);
-        consola.success('Proccessed Deal Data' + dealURL);
+        consola.success('Proccessed Deal Data');
         const currentPage = await currentURL();
         if (currentPage === 'https://www.desidime.com/deals/new') {
             await write(dealURL, textBox({ id: 'topic_deal_url' }), {
@@ -66,9 +66,12 @@ const postDeal = async (dealData) => {
             await click("Post Deal");
             consola.success('Deal Posted!');
         } else {
-            consola.error('SOme Error');
+            const currentPage = await currentURL();
+            consola.error('Some Error' + currentPage);
         }
-
+        await goto('https://www.desidime.com/deals/new', {
+            'waitForEvents': ['DOMContentLoaded']
+        });
     }
     catch (error) {
         console.error(error);
@@ -81,7 +84,7 @@ const processDealData = async (dealData) => {
     await openTab(...shortURL);
     const affiURL = await currentURL();
     await closeTab();
-    const dealURL = RemoveParameterFromUrl(affiURL, ['linkCode', 'tag', 'linkId', 'affids', 'Site', 'telegram', 'affExtParam2', 'affExtParam1']);
+    const dealURL = RemoveParameterFromUrl(affiURL, ['linkCode', 'tag', 'linkId', 'affid', 'Site', 'telegram', 'affExtParam2', 'affExtParam1']);
     const dealTitle = dealData.replace(...shortURL, "").trim();
     return {
         dealTitle,
